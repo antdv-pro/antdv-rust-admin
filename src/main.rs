@@ -1,6 +1,12 @@
 use std::net::SocketAddr;
 
-use axum::{response::Html, routing::get, Router};
+use axum::{
+    extract::Query,
+    response::{Html, IntoResponse},
+    routing::get,
+    Router,
+};
+use serde::Deserialize;
 use time::macros::format_description;
 use tracing_subscriber::{
     fmt::{self, time::LocalTime},
@@ -17,7 +23,7 @@ async fn main() {
         .with(fmt::layer().with_timer(timer))
         .init();
 
-    let app = Router::new().route("/", get(handler));
+    let app = Router::new().route("/", get(handler_hello));
 
     let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
     tracing::debug!("listening on {}", addr);
@@ -27,6 +33,13 @@ async fn main() {
         .unwrap();
 }
 
-async fn handler() -> Html<&'static str> {
-    Html("<h1>Hello, World!</h1>")
+#[derive(Debug, Deserialize)]
+struct HelloParams {
+    name: Option<String>,
+}
+
+async fn handler_hello(Query(params): Query<HelloParams>) -> impl IntoResponse {
+    let name = params.name.as_deref().unwrap_or("World!");
+    tracing::info!(name);
+    Html(format!("<h1>hello {name}</h1>"))
 }
